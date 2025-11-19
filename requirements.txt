@@ -1,1 +1,5 @@
-flask==2.0.1flask-socketio==5.1.1eventlet==0.33.3gunicorn==20.1.0
+flask==2.0.1
+flask-socketio==5.1.1
+eventlet==0.33.3
+gunicorn==20.1.0
+```
