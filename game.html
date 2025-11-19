@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Battle Cars: Arena</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: 'Arial', sans-serif; touch-action: none; }
+        
+        /* --- TELA DE LOGIN --- */
+        #login-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 100; /* Fica na frente de tudo */
+        }
+        
+        .login-box {
+            background: #2c2c2c; padding: 40px; border-radius: 15px;
+            text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            border: 2px solid #444; min-width: 300px;
+        }
+        
+        input[type="text"] {
+            padding: 15px; font-size: 20px; margin: 20px 0;
+            width: 100%; text-align: center;
+            background: #111; border: 2px solid #555; color: white;
+            border-radius: 8px; outline: none; text-transform: uppercase;
+        }
+        input[type="text"]:focus { border-color: #00ccff; }
+        
+        .start-btn {
+            padding: 15px 40px; font-size: 20px; background: #00ccff; color: black;
+            border: none; cursor: pointer; font-weight: bold; border-radius: 8px;
+            transition: transform 0.1s; width: 100%;
+        }
+        .start-btn:active { transform: scale(0.95); background: #00aadd; }
+
+        /* --- UI DO JOGO --- */
+        #ui-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            pointer-events: none; padding: 20px; display: flex; 
+            flex-direction: column; z-index: 5; 
+        }
+        
+        #scoreboard {
+            background: rgba(0, 0, 0, 0.6); padding: 15px; border-radius: 10px; max-width: 350px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .score-entry {
+            color: white; font-weight: bold; font-size: 18px; 
+            text-shadow: 1px 1px 0 #000; font-family: 'Courier New', monospace;
+            margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* --- GAME OVER --- */
+        #game-over-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            pointer-events: auto; z-index: 20;
+        }
+        h1 { color: white; font-size: 3rem; margin-bottom: 20px; text-transform: uppercase; font-style: italic; text-align: center; text-shadow: 0 0 10px #fff;}
+        
+        button.reset-btn {
+            padding: 15px 30px; font-size: 1.2rem; background: #ff4444; color: white;
+            border: none; cursor: pointer; font-weight: bold; text-transform: uppercase;
+            border-radius: 5px; box-shadow: 0 5px 0 #b71c1c;
+        }
+        button.reset-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b71c1c; }
+
+        /* --- CONTROLES MOBILE --- */
+        #mobile-controls {
+            position: absolute; bottom: 20px; width: 100%; height: 160px;
+            display: flex; justify-content: space-between; padding: 0 20px;
+            box-sizing: border-box; pointer-events: none; z-index: 10;
+        }
+        .control-group { pointer-events: auto; display: flex; gap: 15px; }
+        .btn {
+            width: 75px; height: 75px; background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 50%;
+            color: white; font-size: 30px; display: flex; align-items: center; justify-content: center;
+            user-select: none; touch-action: manipulation; backdrop-filter: blur(5px);
+        }
+        .btn:active { background: rgba(255, 255, 255, 0.4); transform: scale(0.95); }
+        
+        #btn-shoot {
+            width: 90px; height: 90px; background: rgba(255, 68, 68, 0.3);
+            border-color: #ff4444; color: #ff4444; font-size: 18px; font-weight: bold;
+        }
+        #btn-shoot:active { background: #ff4444; color: white; }
+
+        .direction-pad { align-items: flex-end; }
+        .action-pad { align-items: flex-end; gap: 20px; }
+        
+        /* No PC, deixa os controles transparentes mas visíveis pra quem quiser clicar */
+        @media (min-width: 1024px) { #mobile-controls { opacity: 0.2; } }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h1 style="font-size: 2.5rem; margin-bottom: 10px; color: #ffcc00; font-style: italic;">BATTLE CARS</h1>
+            <p style="color:#ccc; margin-bottom: 20px;">ARENA 5 JOGADORES</p>
+            <input type="text" id="player-name-input" placeholder="SEU NOME" maxlength="10">
+            <button class="start-btn" onclick="joinGame()">ENTRAR NA PISTA</button>
+        </div>
+    </div>
+
+    <!-- Placar -->
+    <div id="ui-layer">
+        <div id="scoreboard">
+            <div style="color:#aaa; font-size: 14px;">Aguardando conexão...</div>
+        </div>
+    </div>
+    
+    <!-- Game Over -->
+    <div id="game-over-screen">
+        <h1 id="winner-text">FIM DE JOGO</h1>
+        <button class="reset-btn" onclick="requestReset()">NOVA RODADA</button>
+    </div>
+
+    <!-- Controles -->
+    <div id="mobile-controls">
+        <div class="control-group direction-pad">
+            <div class="btn" id="btn-left">◄</div>
+            <div class="btn" id="btn-right">►</div>
+        </div>
+        <div class="control-group action-pad">
+            <div class="btn" id="btn-shoot">FIRE</div>
+            <div style="display:flex; flex-direction:column; gap:10px">
+                <div class="btn" id="btn-up" style="background: rgba(0, 255, 0, 0.1)">▲</div>
+                <div class="btn" id="btn-down" style="background: rgba(255, 0, 0, 0.1)">▼</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        const socket = io();
+        let myId = null;
+        let myCar = null;
+        const otherCars = {};
+        let bullets = []; 
+        let gameActive = false; // Começa falso até o login
+        let lastShootTime = 0;
+
+        // --- Three.js Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x201530); // Roxo bem escuro
+        scene.fog = new THREE.Fog(0x201530, 30, 140);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Luzes
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(60, 100, 40);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 300;
+        dirLight.shadow.camera.left = -100;
+        dirLight.shadow.camera.right = 100;
+        dirLight.shadow.camera.top = 100;
+        dirLight.shadow.camera.bottom = -100;
+        scene.add(dirLight);
+
+        // Chão (Grid Infinito Visual)
+        const groundGeo = new THREE.PlaneGeometry(400, 400);
+        const groundMat = new THREE.MeshPhongMaterial({ color: 0x151515 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        const gridHelper = new THREE.GridHelper(400, 80, 0xff00ff, 0x333333);
+        scene.add(gridHelper);
+
+        // --- Classes ---
+        class Bullet {
+            constructor(x, z, angle, ownerId) {
+                this.ownerId = ownerId;
+                this.speed = 2.0;
+                this.angle = angle;
+                this.life = 45; // ~0.75 segundos
+                
+                const geo = new THREE.SphereGeometry(0.4, 8, 8);
+                const mat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+                this.mesh = new THREE.Mesh(geo, mat);
+                this.mesh.position.set(x, 1.0, z);
+                
+                // Luz da bala (efeito neon)
+                this.light = new THREE.PointLight(0xffff00, 1, 10);
+                this.mesh.add(this.light);
+                
+                scene.add(this.mesh);
+            }
+            update() {
+                this.mesh.position.x += Math.sin(this.angle) * this.speed;
+                this.mesh.position.z += Math.cos(this.angle) * this.speed;
+                this.life--;
+            }
+            remove() { scene.remove(this.mesh); }
+        }
+
+        class Car {
+            constructor(id, color, x, z, angle, name) {
+                this.id = id;
+                this.color = color;
+                this.name = name || "Piloto";
+                this.mesh = new THREE.Group();
+                this.speed = 0;
+                this.angle = angle;
+                this.balloonCount = 3;
+                this.balloons = [];
+
+                // Corpo
+                const bodyGeo = new THREE.BoxGeometry(2.2, 1.0, 4.2);
+                const bodyMat = new THREE.MeshPhongMaterial({ color: color, shininess: 80 });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 0.75;
+                body.castShadow = true;
+                this.mesh.add(body);
+
+                // Cabine (detalhe)
+                const cabin = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.8, 0.6, 2.0),
+                    new THREE.MeshPhongMaterial({ color: 0x222222 })
+                );
+                cabin.position.set(0, 1.4, -0.2);
+                this.mesh.add(cabin);
+
+                // Rodas
+                const wGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.5, 16);
+                const wMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+                [[-1.3,0.5,1.4],[1.3,0.5,1.4],[-1.3,0.5,-1.4],[1.3,0.5,-1.4]].forEach(p => {
+                    const w = new THREE.Mesh(wGeo, wMat);
+                    w.rotation.z = Math.PI/2; w.position.set(...p);
+                    this.mesh.add(w);
+                });
+
+                // Balões
+                const bColors = [0x00ff00, 0x00ffff, 0xff00ff];
+                for(let i=0; i<3; i++) {
+                    const b = new THREE.Mesh(new THREE.SphereGeometry(0.6, 16, 16), new THREE.MeshPhongMaterial({ color: bColors[i], emissive: bColors[i], emissiveIntensity: 0.4 }));
+                    b.position.set((i-1)*0.9, 0.9, -2.8); // Atrás do carro
+                    this.balloons.push(b);
+                    this.mesh.add(b);
+                }
+                
+                this.mesh.position.set(x, 0, z);
+                this.mesh.rotation.y = angle;
+                scene.add(this.mesh);
+            }
+            
+            updateVisuals(data) {
+                this.mesh.position.x = data.x;
+                this.mesh.position.z = data.z;
+                this.mesh.rotation.y = data.angle;
+                this.balloonCount = (data.balloonCount !== undefined) ? data.balloonCount : 3;
+                this.balloons.forEach((b, i) => { b.visible = i < this.balloonCount; });
+            }
+        }
+
+        // --- Input & Login ---
+        function joinGame() {
+            const nameInput = document.getElementById('player-name-input');
+            const name = nameInput.value.trim().toUpperCase();
+            if (!name) return alert("POR FAVOR, DIGITE UM NOME!");
+            
+            // Feedback visual
+            nameInput.disabled = true;
+            document.querySelector('.start-btn').innerText = "CONECTANDO...";
+            
+            socket.emit('join_game', { name: name });
+        }
+        
+        // Permitir Enter no input
+        document.getElementById('player-name-input').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') joinGame();
+        });
+
+        // --- Socket Events ---
+        socket.on('init_player', (packet) => {
+            myId = packet.id;
+            const p = packet.data;
+            myCar = new Car(myId, p.color, p.x, p.z, p.angle, p.name);
+            myCar.balloonCount = p.balloonCount || 3;
+            
+            document.getElementById('login-screen').style.display = 'none';
+            gameActive = true;
+            setupControls();
+            updateScoreboard();
+        });
+
+        socket.on('game_full', (data) => {
+            alert(data.message);
+            document.querySelector('.start-btn').innerText = "ENTRAR NA PISTA";
+            document.getElementById('player-name-input').disabled = false;
+        });
+
+        socket.on('update_players', (serverPlayers) => {
+            Object.keys(serverPlayers).forEach(id => {
+                if (id === myId) return;
+                if (!otherCars[id]) {
+                    const p = serverPlayers[id];
+                    const newCar = new Car(id, p.color, p.x, p.z, p.angle, p.name);
+                    newCar.updateVisuals(p);
+                    otherCars[id] = newCar;
+                }
+            });
+            Object.keys(otherCars).forEach(id => {
+                if (!serverPlayers[id]) {
+                    scene.remove(otherCars[id].mesh);
+                    delete otherCars[id];
+                }
+            });
+            updateScoreboard();
+        });
+
+        socket.on('player_moved', (packet) => {
+            if (otherCars[packet.id]) otherCars[packet.id].updateVisuals(packet.data);
+        });
+
+        socket.on('player_shot', (data) => {
+            createBullet(data.x, data.z, data.angle, data.shooterId);
+        });
+
+        socket.on('balloon_popped', (data) => {
+            const target = (myId === data.victimId) ? myCar : otherCars[data.victimId];
+            if (target) {
+                target.balloonCount = Math.max(0, target.balloonCount - 1);
+                target.balloons.forEach((b, i) => b.visible = i < target.balloonCount);
+            }
+            updateScoreboard();
+            checkGameOver();
+        });
+
+        socket.on('game_reset', (players) => {
+            gameActive = true;
+            document.getElementById('game-over-screen').style.display = 'none';
+            
+            if (players[myId]) {
+                const p = players[myId];
+                myCar.speed = 0;
+                myCar.mesh.position.set(p.x, 0, p.z);
+                myCar.angle = p.angle;
+                myCar.balloonCount = 3;
+                myCar.balloons.forEach(b => b.visible = true);
+            }
+            Object.keys(otherCars).forEach(id => {
+                if (players[id]) otherCars[id].updateVisuals(players[id]);
+            });
+            
+            bullets.forEach(b => b.remove());
+            bullets = [];
+            updateScoreboard();
+        });
+
+        // --- Game Logic ---
+        function createBullet(x, z, angle, ownerId) {
+            const startX = x + Math.sin(angle) * 3.5;
+            const startZ = z + Math.cos(angle) * 3.5;
+            bullets.push(new Bullet(startX, startZ, angle, ownerId));
+        }
+
+        function handleShooting() {
+            if (!gameActive) return;
+            if (!myCar || myCar.balloonCount <= 0) return; // Morto não atira
+
+            const now = Date.now();
+            if (now - lastShootTime > 500) { // 0.5s cooldown
+                lastShootTime = now;
+                createBullet(myCar.mesh.position.x, myCar.mesh.position.z, myCar.angle, myId);
+                socket.emit('shoot', {
+                    x: myCar.mesh.position.x, z: myCar.mesh.position.z, angle: myCar.angle, shooterId: myId
+                });
+            }
+        }
+
+        function checkGameOver() {
+            if (!gameActive) return;
+            if (myCar && myCar.balloonCount <= 0) {
+                showGameOver("VOCÊ FOI ELIMINADO!");
+                return;
+            }
+            
+            // Checa vitória (Sou o único vivo e tem gente na sala)
+            let aliveCount = (myCar.balloonCount > 0) ? 1 : 0;
+            Object.values(otherCars).forEach(c => { if (c.balloonCount > 0) aliveCount++; });
+            
+            // Só ganha se tiver pelo menos 1 oponente conectado (mesmo que morto)
+            if (aliveCount === 1 && myCar.balloonCount > 0 && Object.keys(otherCars).length > 0) {
+                showGameOver("VOCÊ É O CAMPEÃO!");
+            }
+        }
+
+        function showGameOver(msg) {
+            setTimeout(() => {
+                document.getElementById('winner-text').innerText = msg;
+                document.getElementById('game-over-screen').style.display = 'flex';
+            }, 800);
+        }
+
+        window.requestReset = function() { socket.emit('request_reset'); }
+
+        function updateScoreboard() {
+            const board = document.getElementById('scoreboard');
+            board.innerHTML = ''; 
+
+            const addLine = (name, count, colorHex, isMe) => {
+                const div = document.createElement('div');
+                div.className = 'score-entry';
+                const colorDot = `<span style="color:#${colorHex.toString(16).padStart(6, '0')}; margin-right:8px; font-size:20px">■</span>`;
+                const balls = "⬤ ".repeat(count);
+                const deadStyle = count === 0 ? 'text-decoration: line-through; opacity: 0.5' : '';
+                
+                div.innerHTML = `
+                    <span style="${deadStyle}; display:flex; align-items:center">
+                        ${colorDot} ${name.substring(0, 10)} ${isMe ? '(EU)' : ''}
+                    </span>
+                    <span style="color: #ff4444; font-size: 12px; margin-left:10px">${balls}</span>
+                `;
+                board.appendChild(div);
+            };
+
+            if (myCar) addLine(myCar.name, myCar.balloonCount, myCar.color, true);
+            Object.values(otherCars).forEach(c => addLine(c.name, c.balloonCount, c.color, false));
+        }
+
+        // --- Controles ---
+        const keys = { w: false, s: false, a: false, d: false };
+        
+        function setupControls() {
+            // Teclado
+            window.addEventListener('keydown', e => {
+                if(e.key==='ArrowUp'||e.key==='w') keys.w=true;
+                if(e.key==='ArrowDown'||e.key==='s') keys.s=true;
+                if(e.key==='ArrowLeft'||e.key==='a') keys.a=true;
+                if(e.key==='ArrowRight'||e.key==='d') keys.d=true;
+                if(e.key===' ') handleShooting();
+            });
+            window.addEventListener('keyup', e => {
+                if(e.key==='ArrowUp'||e.key==='w') keys.w=false;
+                if(e.key==='ArrowDown'||e.key==='s') keys.s=false;
+                if(e.key==='ArrowLeft'||e.key==='a') keys.a=false;
+                if(e.key==='ArrowRight'||e.key==='d') keys.d=false;
+            });
+
+            // Touch
+            const addTouch = (id, key) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                const press = (e) => { e.preventDefault(); keys[key]=true; };
+                const release = (e) => { e.preventDefault(); keys[key]=false; };
+                
+                btn.addEventListener('touchstart', press);
+                btn.addEventListener('touchend', release);
+                btn.addEventListener('mousedown', press);
+                btn.addEventListener('mouseup', release);
+            };
+            addTouch('btn-up','w'); addTouch('btn-down','s');
+            addTouch('btn-left','a'); addTouch('btn-right','d');
+            
+            const btnShoot = document.getElementById('btn-shoot');
+            if (btnShoot) {
+                const fire = (e) => { e.preventDefault(); handleShooting(); };
+                btnShoot.addEventListener('touchstart', fire);
+                btnShoot.addEventListener('mousedown', fire);
+            }
+        }
+
+        // --- Loop Principal ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Atualiza Balas
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.update();
+                if (b.life <= 0) { b.remove(); bullets.splice(i, 1); continue; }
+
+                // Colisão Bala vs Meus Balões (Cliente valida o próprio dano pra ficar responsivo)
+                if (myCar && b.ownerId !== myId && myCar.balloonCount > 0) {
+                    myCar.balloons.forEach((balloon, bIdx) => {
+                        if (!balloon.visible) return;
+                        const bPos = new THREE.Vector3();
+                        balloon.getWorldPosition(bPos);
+                        
+                        // Distância de acerto
+                        if (bPos.distanceTo(b.mesh.position) < 1.8) {
+                            b.life = 0; 
+                            balloon.visible = false;
+                            // Som de pop? Poderia ir aqui
+                            socket.emit('balloon_pop', { victimId: myId, balloonIdx: bIdx });
+                        }
+                    });
+                }
+            }
+
+            if (myCar && gameActive && myCar.balloonCount > 0) {
+                // Física Carro
+                if (keys.w) myCar.speed += 0.03; // Aceleração
+                if (keys.s) myCar.speed -= 0.02; // Ré
+                
+                // Curva só se estiver andando (realismo básico)
+                if (Math.abs(myCar.speed) > 0.05) {
+                    const dir = myCar.speed > 0 ? 1 : -1;
+                    if (keys.a) myCar.angle += 0.06 * dir;
+                    if (keys.d) myCar.angle -= 0.06 * dir;
+                }
+                
+                myCar.speed *= 0.96; // Fricção
+                
+                myCar.mesh.position.x += Math.sin(myCar.angle) * myCar.speed;
+                myCar.mesh.position.z += Math.cos(myCar.angle) * myCar.speed;
+                myCar.mesh.rotation.y = myCar.angle;
+
+                // Limites do Mapa
+                const limit = 190;
+                if(myCar.mesh.position.x > limit) myCar.mesh.position.x = limit;
+                if(myCar.mesh.position.x < -limit) myCar.mesh.position.x = -limit;
+                if(myCar.mesh.position.z > limit) myCar.mesh.position.z = limit;
+                if(myCar.mesh.position.z < -limit) myCar.mesh.position.z = -limit;
+
+                // Envia movimento se houve mudança
+                if (Math.abs(myCar.speed) > 0.01 || keys.a || keys.d) {
+                    socket.emit('move', {
+                        x: myCar.mesh.position.x, z: myCar.mesh.position.z, angle: myCar.angle, balloonCount: myCar.balloonCount
+                    });
+                }
+                
+                // Câmera suave
+                const camOffset = new THREE.Vector3(0, 18, -30).applyMatrix4(myCar.mesh.matrixWorld);
+                camera.position.lerp(camOffset, 0.1);
+                camera.lookAt(myCar.mesh.position);
+            }
+            
+            // Se morreu, câmera fica parada ou assiste? Por enquanto para.
+            
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth/window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
