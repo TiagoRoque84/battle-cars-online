@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battle Cars - Admin</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #2c2c2c;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            color: #00ccff;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .stats-card {
+            background-color: #333;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #444;
+        }
+
+        .stats-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #444;
+        }
+
+        th {
+            background-color: #222;
+            color: #00ccff;
+        }
+
+        tr:hover {
+            background-color: #383838;
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #00ff00;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .refresh-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background-color: #00ccff;
+            color: #000;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: background 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background-color: #00aadd;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #555;
+            background: #222;
+            color: white;
+        }
+
+        button {
+            padding: 10px;
+            background: #00ccff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Battle Cars - Painel Admin</h1>
+
+        {% if not logged_in %}
+        <form action="/login" method="POST" class="login-form">
+            <input type="password" name="password" placeholder="Senha de Admin" required>
+            <button type="submit">Entrar</button>
+            {% if error %}
+            <p style="color: #ff4444; text-align: center;">{{ error }}</p>
+            {% endif %}
+        </form>
+        {% else %}
+
+        <div class="stats-card">
+            <div>Jogadores Online</div>
+            <div class="stats-number">{{ players|length }} / 5</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>ID (Role)</th>
+                    <th>Nome</th>
+                    <th>Balões</th>
+                    <th>Cor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for id, p in players.items() %}
+                <tr>
+                    <td><span class="status-dot"></span>Online</td>
+                    <td>{{ p.role }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>
+                        {% for i in range(p.balloonCount) %}
+                        ⬤
+                        {% endfor %}
+                        ({{ p.balloonCount }})
+                    </td>
+                    <td>
+                        <div
+                            style="width: 20px; height: 20px; background-color: #{{ '%06x' % p.color }}; border-radius: 50%;">
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #888;">Nenhum jogador conectado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <a href="/admin" class="refresh-btn">Atualizar Dados</a>
+        <a href="/logout"
+            style="display: block; text-align: center; margin-top: 15px; color: #888; text-decoration: none;">Sair</a>
+
+        {% endif %}
+    </div>
+</body>
+
+</html>
